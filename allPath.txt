@@ -1,0 +1,4 @@
+D:\backupSetting\fileList.txt
+D:/backupSetting/backupDestination.txt
+D:/backupSetting/history.txt
+D:/backupSetting/version.txt

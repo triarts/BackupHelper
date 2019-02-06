@@ -1,8 +1,10 @@
 package com.personal.backupChooser;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -13,7 +15,7 @@ import java.util.stream.Stream;
 
 public class SettingLoader {
 	
-	final String allPath = "setting/allPath.txt";
+	String allPath = "";
 	String historyFilePath = "";
 	String fileListFilePath = "";
 	String backupDestFilePath = "";
@@ -25,7 +27,8 @@ public class SettingLoader {
 	List<String> mlistBackupDest = new ArrayList<>();
 	List<String> mlistVersion = new ArrayList<>();
 
-	public SettingLoader() {
+	public SettingLoader(String allpath) {
+		this.allPath = allpath;
 		// TODO Auto-generated method stub
 		
 //		String path = "C:\\Documents and Settings\\Manoj\\Desktop";
@@ -53,6 +56,20 @@ public class SettingLoader {
 		return returnList;
 	}
 	
+//	public List<String> readTxtFile (File fileSource)
+//	{
+//		List<String> returnList = new ArrayList<>();
+//		
+//		try (Stream<String> stream = Files.lines(Paths.get(fileSource.getAbsolutePath()))) {
+//	        stream.forEach(returnList::add);
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		
+//		return returnList;
+//	}
+//	
 	public void rewrite(String txt_filepath,List<String> newListString)
 	{
         Path file2 = Paths.get(txt_filepath);
@@ -71,6 +88,8 @@ public class SettingLoader {
 	
 	public void reloadAll()
 	{
+//		URL urlAllPath = getClass().getResource("allPath.txt");
+//		File fileAllPath = new File(urlAllPath.getPath());
 		mlistAllPath = readTxtFile(allPath);
 		
 		fileListFilePath = mlistAllPath.get(0);
@@ -84,6 +103,9 @@ public class SettingLoader {
 		mlistVersion = readTxtFile(versionFilePath);
 	}
 	
+	public void setAllPath(String allPath) {
+		this.allPath = allPath;
+	}
 	
 	public List<String> getMlistBackupDest() {
 		return mlistBackupDest;

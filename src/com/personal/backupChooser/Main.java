@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.prefs.Preferences;
 
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
@@ -38,11 +39,13 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  * https://stackoverflow.com/questions/24361690/the-method-showsavedialogcomponent-in-the-type-jfilechooser-is-not-applicable
  * https://stackoverflow.com/questions/7768071/how-to-delete-directory-content-in-java
  * https://www.javatpoint.com/java-swing
+ * //http://www.vogella.com/tutorials/JavaPreferences/article.html
 **/
 
 //TODO bikin execute able, add sesuatu ke history, ganti path untuk allpath karena ga bs di laod klo jd jar
 //https://stackoverflow.com/questions/394616/running-jar-file-on-windows
 //https://www.wikihow.com/Create-an-Executable-File-from-Eclipse
+
 
 public class Main implements ActionListener {
 	
@@ -50,12 +53,25 @@ public class Main implements ActionListener {
 	   private Label headerLabel;
 	   private Label statusLabel;
 	   private Panel controlPanel;
-
-	   public Main(List<String> allpath){
-	      prepareGUI(allpath);
+	   private Preferences prefs;
+	   String ID1 = "setting";
+	   
+	   public Main(){
+		   prefs = Preferences.userRoot().node(this.getClass().getName());
+		   String allpathFilePath = prefs.get(ID1, "empty");
+		   if(!allpathFilePath.equals("empty"))
+		   {
+			   setLoad = new SettingLoader(allpathFilePath);
+			   prepareGUI(setLoad.getMlistAllPath());
+		   }
+		   else {
+			   prepareGUI(null);
+		   }
+		  
+	      
 	   }
 
-	   static SettingLoader setLoad;
+	   SettingLoader setLoad;
 	   public static void main(String[] args){
 		   
 		   // TODO
@@ -63,9 +79,8 @@ public class Main implements ActionListener {
 		   // next version history
 		   // running di backround/loading bar
 		   // jd in app independent
-		   
-		   setLoad = new SettingLoader();
-		   Main test = new Main(setLoad.getMlistAllPath());
+		  
+		   Main test = new Main();
 		   
 //		   setLoad.getMlistFileList().forEach(System.out::println);
 //		   setLoad.getMlistBackupDest().forEach(System.out::println);
@@ -78,16 +93,36 @@ public class Main implements ActionListener {
 	   final JFileChooser fc2 = new JFileChooser();
 	   final JFileChooser fc3 = new JFileChooser();
 	   final JFileChooser fc4 = new JFileChooser();
+	   final JFileChooser fc0 = new JFileChooser();
 	   public void actionPerformed(ActionEvent e) {
 
 		   FileNameExtensionFilter filter = new FileNameExtensionFilter("TEXT FILES", "txt", "text");
+		   fc0.setFileFilter(filter);
 		   fc1.setFileFilter(filter);
 		   fc2.setFileFilter(filter);
 		   fc3.setFileFilter(filter);
 		   fc4.setFileFilter(filter);
 		   
 	        //Handle open button action.
-	        if (e.getSource() == btnFileList) {
+	        if (e.getSource() == btnAllPath) {
+	            int returnVal = fc0.showOpenDialog(fc0);
+
+	            if (returnVal == JFileChooser.APPROVE_OPTION) {
+	                File file = fc0.getSelectedFile();
+	                String path = file.getPath();
+	                tvAllPath.setText(path);
+	                prefs.put(ID1, path);
+	                setLoad.setAllPath(path);
+	                setLoad.reloadAll();
+	                reloadAllTextview(setLoad.getMlistAllPath());
+	                //This is where a real application would open the file.
+	                //log.append("Opening: " + file.getName() + "." + newline);
+	            } else {
+	                //log.append("Open command cancelled by user." + newline);
+	            }
+	            //log.setCaretPosition(log.getDocument().getLength());
+	        }
+	        else if (e.getSource() == btnFileList) {
 	            int returnVal = fc1.showOpenDialog(fc1);
 
 	            if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -157,6 +192,7 @@ public class Main implements ActionListener {
 	        	
 	        	//rewrite old path
 	        	setLoad.rewrite(setLoad.getAllPath(), newPath);
+	        	setLoad.reloadAll();
 	            
 	        	LibBackup lib = new LibBackup();
 	        	
@@ -165,10 +201,25 @@ public class Main implements ActionListener {
 //				lib.deleteFolder(new File(setLoad.getMlistBackupDest().get(0)));
 				
 				String versionPath = "v"+setLoad.getMlistVersion().get(0)+"_"+lib.getDateTime();
+				String finalDestPath = "";
 				for(int i=0;i<setLoad.getMlistFileList().size();i++)
 				{
-					File source = new File( setLoad.getMlistFileList().get(i));
-					lib.generalCopy(source,new File(setLoad.getMlistBackupDest().get(0)+"/"+versionPath));
+					String dataPath = setLoad.getMlistFileList().get(i);
+					if(dataPath.contains("@##"))
+					{
+						String CustomFolderPath = dataPath.replaceAll("@##","");
+						finalDestPath = setLoad.getMlistBackupDest().get(0)+"/"+versionPath+"/"+CustomFolderPath;
+					}
+					else
+					{
+						if(finalDestPath.equals(""))
+						{
+							finalDestPath = setLoad.getMlistBackupDest().get(0)+"/"+versionPath;
+						}
+						File source = new File(setLoad.getMlistFileList().get(i));
+						lib.generalCopy(source,new File(finalDestPath));
+					}
+
 				}
 				
 				
@@ -181,12 +232,12 @@ public class Main implements ActionListener {
 				setLoad.reloadAll();
 				
 				//tvInfo.append(str);
-				tvInfo.append("File Name : \n"+versionPath);
+				tvInfo.append("File Name : \n"+versionPath+"\n");
 	        }
 	   }
 
-	   JButton btnFileList,btnDestination, btnHistory,btnVersion,btnStartProgram;
-	   JTextField tvFilelistPath,tvDestinationPath, tvHistoryPath,tvVersionPath;
+	   JButton btnFileList,btnDestination, btnHistory,btnVersion,btnStartProgram,btnAllPath;
+	   JTextField tvFilelistPath,tvDestinationPath, tvHistoryPath,tvVersionPath,tvAllPath;
 	   JTextArea tvInfo;
 	   private void prepareGUI(List<String> allpath){
 		   JFrame mainFrame = new JFrame();//creating instance of JFrame 
@@ -197,6 +248,8 @@ public class Main implements ActionListener {
 		   lblAppName.setBounds(50,50, 100,30);
 		   
 		   //label Path name
+		   JLabel lblPath0 = new JLabel("allPath");  
+		   lblPath0.setBounds(50,50, 150,30);
 		   JLabel lblPath1 = new JLabel("File List");  
 		   lblPath1.setBounds(50,50, 150,30);
 		   JLabel lblPath2 = new JLabel("Backup Destination");  
@@ -208,12 +261,14 @@ public class Main implements ActionListener {
 
 	          
 		   //button
+		   btnAllPath = new JButton("Browse");//creating instance of JButton  
 		   btnFileList = new JButton("Browse");//creating instance of JButton  
 		   btnDestination = new JButton("Browse");//creating instance of JButton  
 		   btnHistory = new JButton("Browse");//creating instance of JButton  
 		   btnVersion = new JButton("Browse");//creating instance of JButton  
 		   
 		   int btnx = 130, btny = 100, btnw= 100, btnh=30;
+		   btnAllPath.setBounds(btnx,btny,btnw, btnh);
 		   btnFileList.setBounds(btnx,btny,btnw, btnh);//x axis, y axis, width, height  
 		   btnDestination.setBounds(btnx,btny,btnw, btnh);//x axis, y axis, width, height
 		   btnHistory.setBounds(btnx,btny,btnw, btnh);//x axis, y axis, width, height   
@@ -221,11 +276,13 @@ public class Main implements ActionListener {
 		   
 		   
 		   //textview
+		   tvAllPath = new JTextField();
 		   tvFilelistPath = new JTextField();  
 		   tvDestinationPath = new JTextField();  
 		   tvHistoryPath = new JTextField();  
 		   tvVersionPath = new JTextField();
 		   tvInfo = new JTextArea();
+		   tvAllPath.setEditable(false);
 		   tvFilelistPath.setEditable(false);
 		   tvDestinationPath.setEditable(false);
 		   tvHistoryPath.setEditable(false);
@@ -233,6 +290,7 @@ public class Main implements ActionListener {
 		   tvInfo.setEditable(false);
 		   
 		   int tvx = 50, tvy=50, tvw=200, tvh=20;
+		   tvAllPath.setBounds(tvx,tvy,tvw,tvh);
 		   tvFilelistPath.setBounds(tvx,tvy,tvw,tvh);  
 		   tvDestinationPath.setBounds(tvx,tvy,tvw,tvh);  
 		   tvHistoryPath.setBounds(tvx,tvy,tvw,tvh);    
@@ -244,6 +302,7 @@ public class Main implements ActionListener {
 		   btnStartProgram.setBounds(btnx,btny,btnw, btnh);
 		   
 		   //listener
+		   btnAllPath.addActionListener(this);
 		   btnFileList.addActionListener(this);
 		   btnDestination.addActionListener(this);
 		   btnHistory.addActionListener(this);
@@ -253,16 +312,19 @@ public class Main implements ActionListener {
 		   
 		   //add to frame     
 		   mainFrame.add(lblAppName);
+		   mainFrame.add(lblPath0);
 		   mainFrame.add(lblPath1);
 		   mainFrame.add(lblPath2);
 		   mainFrame.add(lblPath3);
 		   mainFrame.add(lblPath4);
 		   
+		   mainFrame.add(btnAllPath);
 		   mainFrame.add(btnFileList);//adding button in JFrame  
 		   mainFrame.add(btnDestination);//adding button in JFrame  
 		   mainFrame.add(btnHistory);//adding button in JFrame  
 		   mainFrame.add(btnVersion);//adding button in JFrame  
 		   
+		   mainFrame.add(tvAllPath);
 		   mainFrame.add(tvFilelistPath);
 		   mainFrame.add(tvDestinationPath);
 		   mainFrame.add(tvHistoryPath);
@@ -278,37 +340,46 @@ public class Main implements ActionListener {
 		   lblAppName.setLocation(130, 10);
 		   int lblgap = 50;
 		   int lbl_y = 30;
-		   lblPath1.setLocation(30,lbl_y);
-		   lblPath2.setLocation(30,lbl_y+lblgap);
-		   lblPath3.setLocation(30,lbl_y+lblgap*2);
-		   lblPath4.setLocation(30,lbl_y+lblgap*3);
+		   lblPath0.setLocation(30,lbl_y);
+		   lblPath1.setLocation(30,lbl_y+lblgap);
+		   lblPath2.setLocation(30,lbl_y+lblgap*2);
+		   lblPath3.setLocation(30,lbl_y+lblgap*3);
+		   lblPath4.setLocation(30,lbl_y+lblgap*4);
 		   
 		   int btn_x_position = 250;
 		   int btn_y_position = 50;
 		   int btn_gap = 50;
-		   btnFileList.setLocation(btn_x_position, btn_y_position);
-		   btnDestination.setLocation(btn_x_position, btn_y_position+btn_gap);
-		   btnHistory.setLocation(btn_x_position, btn_y_position+btn_gap*2);
-		   btnVersion.setLocation(btn_x_position, btn_y_position+btn_gap*3);
+		   btnAllPath.setLocation(btn_x_position,btn_y_position);
+		   btnFileList.setLocation(btn_x_position, btn_y_position+btn_gap);
+		   btnDestination.setLocation(btn_x_position, btn_y_position+btn_gap*2);
+		   btnHistory.setLocation(btn_x_position, btn_y_position+btn_gap*3);
+		   btnVersion.setLocation(btn_x_position, btn_y_position+btn_gap*4);
 		   
 		   int tv_x_position = 30;
 		   int tv_y_position = 55;
 		   int tv_gap = 50;
-		   tvFilelistPath.setLocation(tv_x_position, tv_y_position);
-		   tvDestinationPath.setLocation(tv_x_position, tv_y_position+tv_gap);
-		   tvHistoryPath.setLocation(tv_x_position, tv_y_position+tv_gap*2);
-		   tvVersionPath.setLocation(tv_x_position, tv_y_position+tv_gap*3);
+		   tvAllPath.setLocation(tv_x_position, tv_y_position);
+		   tvFilelistPath.setLocation(tv_x_position, tv_y_position+tv_gap);
+		   tvDestinationPath.setLocation(tv_x_position, tv_y_position+tv_gap*2);
+		   tvHistoryPath.setLocation(tv_x_position, tv_y_position+tv_gap*3);
+		   tvVersionPath.setLocation(tv_x_position, tv_y_position+tv_gap*4);
 		   
 		   
-		   btnStartProgram.setLocation(150,270);
+		   btnStartProgram.setLocation(150,300);
 		   
-		   tvInfo.setLocation(50,320);
+		   tvInfo.setLocation(50,350);
 		   tvInfo.setText("== INFO ==\n");
 		   
 		   //setText
 		   lblAppName.setSize(200,30);
 		 
-		   if(allpath.size() > 0)
+		   String allpathFilePath = prefs.get(ID1, "empty");
+		   if(!allpathFilePath.equals("empty"))
+		   {
+			   tvAllPath.setText(allpathFilePath);
+		   }
+		   
+		   if(allpath != null)
 		   {
 			   tvFilelistPath.setText(allpath.get(0)); 
 			   tvDestinationPath.setText(allpath.get(1)); 
@@ -318,9 +389,17 @@ public class Main implements ActionListener {
 
 		   
 		   //set frame
-		   mainFrame.setSize(400,500);//400 width and 500 height  
+		   mainFrame.setSize(400,530);//400 width and 500 height  
 		   mainFrame.setLayout(null);//using no layout managers  
 		   mainFrame.setVisible(true);//making the frame visible  
+	   }
+	   
+	   public void reloadAllTextview(List<String> allpath)
+	   {
+		   tvFilelistPath.setText(allpath.get(0)); 
+		   tvDestinationPath.setText(allpath.get(1)); 
+		   tvHistoryPath.setText(allpath.get(2));   
+		   tvVersionPath.setText(allpath.get(3));  
 	   }
 
 }
